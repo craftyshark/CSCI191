@@ -10,6 +10,8 @@
 #include <iostream>
 #include <_food.h>
 #include <_npc.h>
+#include <_MenuManager.h>
+
 _Model *myModel = new _Model();
 _inputs *kBMs = new _inputs();
 _parallax *plxForest = new _parallax();
@@ -17,6 +19,12 @@ _player *ply = new _player();
 _checkCollision *hit= new _checkCollision();
 _sound *snds = new _sound();
 _npc *npc = new _npc();
+_parallax *cred = new _parallax();
+_parallax *menu = new _parallax();
+
+
+//menu stuffs
+_MenuManager *menuManager = new _MenuManager;
 
 _textureLoader *enmsTex = new _textureLoader();
 _textureLoader *foodTex = new _textureLoader();
@@ -35,6 +43,12 @@ _glScene::~_glScene()
 {
     //dtor
 }
+
+//Function for the main so that the game exits when escaped key clicked on the correct MenuStates
+MenuStates _glScene::sendScreen(){
+    return menuManager->currState;
+}
+
 GLint _glScene::initGL()
 {
 
@@ -47,16 +61,23 @@ GLint _glScene::initGL()
 
    _glLight Light(GL_LIGHT0);
 
+   //menu state images
+   cred->parallaxInit("images/group_credits.png");
+   menu->parallaxInit("images/menu_screen.png");
+
+
+   //main game images
    myModel->initModel();
    enmsTex->loadTexture("images/smallblackcat.png");
    foodTex->loadTexture("images/frutis.png");
    NPCTex->loadTexture("images/npc.png");
    plxForest->parallaxInit("images/forest.jpg");
-   ply->initPlayer("images/ply.png");
+   ply->initPlayer("images/ply2.png");
    ply->yPos = -0.3;
    ply->zPos = -3.0;
    npc->initNPC(NPCTex->tex);
    npc->xSize = npc->ySize = 0.25;
+
 
    for(int i=0; i<20;i++)
    {
@@ -82,14 +103,39 @@ GLint _glScene::initGL()
    return true;
 }
 
+
+
 GLint _glScene::drawScene()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	// Clear Screen And Depth Buffer
 	glLoadIdentity();
 
+
+
    // glColor3f(1.0,0.0,0.0);              // setting colors
 
-    glPushMatrix();
+    switch(menuManager->currState){
+    case LANDING:
+        //starts as first thing when game loads, have no idea how the hell
+        //it's just drawing an frigging square.
+        glPushMatrix();
+        glScaled(.33, 1, 1.0);
+        cred->drawSquare(screenWidth,screenHeight);
+        glPopMatrix();
+        break;
+
+    case MENU:
+        glPushMatrix();
+        glScaled(.33, 1, 1.0);
+        menu->drawSquare(screenWidth,screenHeight);
+        glPopMatrix();
+        break;
+
+    //there should be a "help" state case here
+    //we're low on time, it's probably not gonna get implemented.
+
+    case GAME:
+        glPushMatrix();
 
      glTranslated(0,0,-4.0);              //placing objects
      glScalef(6.3,6.3,1);
@@ -104,18 +150,22 @@ GLint _glScene::drawScene()
     myModel->drawModel();             //Teapot model
 
     glPopMatrix();                       // grouping ends*/
-    glPushMatrix();
+
+
+    glPushMatrix();             //draw player
      ply->actions();
      ply->drawPlayer();
     glPopMatrix();
 
-    glPushMatrix();
+    glPushMatrix();             // draw NPC
      npc->drawNPC();
     glPopMatrix();
 
+    //initializing the hunger stat?
     ply->hungerlower();
     cout << ply->hunger << endl;
 
+    //start of food mechanic visual draw, the for loop
     for(int i =0; i<20;i++) {
         food[i].action = 0;
         if(enms[i].xPos<-2.0)
@@ -158,6 +208,16 @@ GLint _glScene::drawScene()
        food[i].actions();
     }
     // end of for loop
+        break;
+
+        //there should be a "pause" menu state here.
+        //we'll see if that gets implemented, no promises.
+
+
+
+    }
+
+
 }
 
 GLvoid _glScene::reSizeScene(GLsizei width, GLsizei height)
@@ -177,7 +237,7 @@ int _glScene::winMsg(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case WM_KEYDOWN:
 
              kBMs->wParam = wParam;
-             kBMs->keyPressed(myModel); //handling Model Movements
+             kBMs->keyPressed(myModel, menuManager); //handling Model Movements
              kBMs->keyPressed(ply);     // handling player movement
              kBMs->keyEnv(plxForest, 0.01);   //handling environment
              kBMs->keyPressed(snds);
